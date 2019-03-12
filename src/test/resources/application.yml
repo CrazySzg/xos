@@ -29,7 +29,7 @@ spring:
 xos:
   default-avator-url: http://www.baidu.com
   hadoop:
-    file-system:
+    file-system: 
       user: hadoop
       url: hdfs://bigdata:8020
       block-size: 134217728
