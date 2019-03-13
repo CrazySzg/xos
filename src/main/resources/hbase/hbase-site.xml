@@ -25,7 +25,7 @@
         <name>hbase.rootdir</name>
         <value>hdfs://bigdata:8020/hbase</value>
     </property>
-    <property>
+   <!-- <property>
         <name>hbase.zookeeper.quorum</name>
         <value>bigdata</value>
     </property>
@@ -38,17 +38,17 @@
     <property>
         <name>hbase.zookeeper.property.dataDir</name>
         <value>/tmp/zookeeper</value>
-    </property>
+    </property>-->
 
     <property>
         <name>hbase.cluster.distributed</name>
         <value>true</value>
     </property>
 
-    <property>
+   <!-- <property>
         <name>zookeeper.znode.parent</name>
         <value>/hbase</value>
-    </property>
+    </property>-->
     <property>
         <name>hbase.hregion.memstore.flush.size</name>
         <value>268435456</value>

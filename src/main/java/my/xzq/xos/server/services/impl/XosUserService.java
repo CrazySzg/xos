@@ -56,8 +56,7 @@ public class XosUserService implements UserDetailsService, XosUserOperator {
         Date now = new Date();
         User loadedUser = userMapper.loadUserByUsername(user.getUsername());
         if (loadedUser != null) {
-            Integer errCode = XosConstant.REGISTER_USER_FAIL;
-            throw new XosException(errCode,xosErrProperties.getMessage(errCode));
+            throw new XosException(XosConstant.REGISTER_USER_FAIL);
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setCreateTime(now);

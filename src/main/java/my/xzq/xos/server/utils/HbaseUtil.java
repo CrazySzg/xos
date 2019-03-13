@@ -101,6 +101,19 @@ public class HbaseUtil {
         }
     }
 
+    public boolean deleteRow(String tableName, String rowKey) {
+        try (Table table = connection.getTable(TableName.valueOf(tableName))) {
+            Delete delete = new Delete(rowKey.getBytes());
+            table.delete(delete);
+            return true;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new XosException(XosConstant.DELETE_HBASE_ROW_FAIL, "delete row:" + rowKey + " fail");
+        }
+    }
+
+
     public boolean deleteRow(String tableName, Delete delete) {
         try (Table table = connection.getTable(TableName.valueOf(tableName))) {
 
@@ -150,6 +163,17 @@ public class HbaseUtil {
             throw new XosException(XosConstant.GET_HBASE_ROW_DATA_FAIL, msg);
         }
     }
+
+    public Result getRow(String tableName, Get get) {
+        try (Table table = connection.getTable(TableName.valueOf(tableName))) {
+            return table.get(get);
+        } catch (IOException e) {
+            e.printStackTrace();
+            String msg = String.format("get row from table=%s error. msg=%s", tableName, e.getMessage());
+            throw new XosException(XosConstant.GET_HBASE_ROW_DATA_FAIL, msg);
+        }
+    }
+
 
     public Result getFilteredRow(String tableName, String rowKey, FilterList filterList) {
         Result rs;
@@ -243,10 +267,26 @@ public class HbaseUtil {
         scan.withStopRow(Bytes.toBytes(endKey));
         scan.setFilter(filterList);
         scan.setCaching(1000);
-        return getScanner(tableName,scan);
+        return getScanner(tableName, scan);
     }
 
-    public ResultScanner getScanner(String tableName,FilterList filterList) {
+    public ResultScanner getScanner(String tableName, String rowKey, String endKey) {
+        Scan scan = new Scan();
+        scan.withStartRow(Bytes.toBytes(rowKey));
+        scan.withStopRow(Bytes.toBytes(endKey));
+        scan.setCaching(1000);
+        return getScanner(tableName, scan);
+    }
+
+    public ResultScanner getScanner(String tableName, byte[] rowKey, byte[] endKey) {
+        Scan scan = new Scan();
+        scan.withStartRow(rowKey);
+        scan.withStopRow(endKey);
+        scan.setCaching(1000);
+        return getScanner(tableName, scan);
+    }
+
+    public ResultScanner getScanner(String tableName, FilterList filterList) {
         try (Table table = connection.getTable(TableName.valueOf(tableName))) {
             Scan scan = new Scan();
             scan.setFilter(filterList);
@@ -255,7 +295,7 @@ public class HbaseUtil {
         } catch (Exception e) {
             e.printStackTrace();
             String msg = String
-                    .format("get row from table=%s error. msg=%s",  tableName, e.getMessage());
+                    .format("get row from table=%s error. msg=%s", tableName, e.getMessage());
             throw new XosException(XosConstant.GET_HBASE_ROW_DATA_FAIL, msg);
         }
     }
@@ -268,13 +308,13 @@ public class HbaseUtil {
         } catch (Exception e) {
             e.printStackTrace();
             String msg = String
-                    .format("get row from table=%s error. msg=%s",  tableName, e.getMessage());
+                    .format("get row from table=%s error. msg=%s", tableName, e.getMessage());
             throw new XosException(XosConstant.GET_HBASE_ROW_DATA_FAIL, msg);
         }
     }
 
     public boolean putRow(String tableName, Put put) {
-        try(Table table = connection.getTable(TableName.valueOf(tableName))) {
+        try (Table table = connection.getTable(TableName.valueOf(tableName))) {
             table.put(put);
             return true;
         } catch (Exception e) {
@@ -290,7 +330,7 @@ public class HbaseUtil {
     }
 
     public long incrementColumnValue(String tableName, String row, byte[] columnFamily, byte[] columnQuanlifier, int number) {
-        try(Table table = connection.getTable(TableName.valueOf(tableName))) {
+        try (Table table = connection.getTable(TableName.valueOf(tableName))) {
             return table.incrementColumnValue(row.getBytes(), columnFamily, columnQuanlifier, number);
         } catch (Exception e) {
             e.printStackTrace();
@@ -300,6 +340,7 @@ public class HbaseUtil {
 
     /**
      * 批量插入行数据
+     *
      * @param connection
      * @param tableName
      * @param puts
