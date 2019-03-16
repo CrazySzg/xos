@@ -1,16 +1,18 @@
 package my.xzq.xos.server.services.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import my.xzq.xos.server.common.response.XosSuccessResponse;
+import my.xzq.xos.server.dto.response.UploadResult;
 import my.xzq.xos.server.enumeration.Category;
 import my.xzq.xos.server.common.XosConstant;
 import my.xzq.xos.server.exception.XosException;
-import my.xzq.xos.server.model.XosObject;
-import my.xzq.xos.server.model.XosObjectSummary;
-import my.xzq.xos.server.model.ObjectListResult;
-import my.xzq.xos.server.model.ObjectMetaData;
-import my.xzq.xos.server.services.XOSService;
+import my.xzq.xos.server.mapper.TaskMapper;
+import my.xzq.xos.server.model.*;
+import my.xzq.xos.server.services.XosService;
 import my.xzq.xos.server.utils.HDFSUtil;
 import my.xzq.xos.server.utils.HbaseUtil;
+import my.xzq.xos.server.utils.UUIDUtil;
+import my.xzq.xos.server.utils.UploadUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -19,6 +21,9 @@ import org.apache.hadoop.hbase.io.ByteBufferInputStream;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.DigestUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
@@ -26,16 +31,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-public class XOSServiceImpl implements XOSService {
+public class XosServiceImpl implements XosService {
 
     @Autowired
     private HDFSUtil hdfsUtil;
 
     @Autowired
     private HbaseUtil hbaseUtil;
+
+    @Autowired
+    private TaskMapper taskMapper;
+
 
 
     /**
@@ -57,7 +67,8 @@ public class XOSServiceImpl implements XOSService {
         // 目录表中添加根目录
         Put rootDir = new Put(Bytes.toBytes("/"));
         String seqId = this.makeDirSequenceId(bucket);
-        put.addColumn(XosConstant.DIR_META_COLUMN_FAMILY_BYTES, XosConstant.DIR_SEQID_QUALIFIER, Bytes.toBytes(seqId));
+        rootDir.addColumn(XosConstant.DIR_META_COLUMN_FAMILY_BYTES, XosConstant.DIR_SEQID_QUALIFIER, Bytes.toBytes(seqId));
+        hbaseUtil.putRow(XosConstant.getDirTableName(bucket),rootDir);
         // 创建HDFS目录
         this.hdfsUtil.mkdirs(XosConstant.FILE_STORE_ROOT + XosConstant.SEPARATOR + bucket);
     }
@@ -79,18 +90,25 @@ public class XOSServiceImpl implements XOSService {
     }
 
     /**
+     * TODO 断点续传
      * 新建文件
+     *
      * @param bucket
      * @param dir
      * @param fileName
      * @param content
      * @param size
      * @param category
-     * @param isDir
      * @throws Exception
+     *
      */
     @Override
-    public void put(String bucket, String dir, String fileName, ByteBuffer content, long size, String category, boolean isDir) throws Exception {
+    public XosSuccessResponse<UploadResult> create(String uploadId, Long partSeq, String bucket, String dir, String fileName, ByteBuffer content, long size, String category) throws Exception {
+        String chunkMd5 = DigestUtils.md5DigestAsHex(content.array());
+        if (!UploadUtil.isFileChunk(uploadId, chunkMd5,partSeq)) {
+            // 文件传输过程中有数据丢失，返回的md5和客户端md5不同，客户端重新上传
+            return XosSuccessResponse.build(new UploadResult(chunkMd5));
+        }
         if (!dirExist(bucket, dir)) {
             throw new XosException(XosConstant.CREATE_FILE_FAIL, "directory " + dir + " doesn't exist ");
         }
@@ -100,6 +118,33 @@ public class XOSServiceImpl implements XOSService {
         String sequenceId = getDirSequenceId(bucket, dir);
 
         String fileKey = this.becomeFileKey(sequenceId, fileName);
+        if(hbaseUtil.existRow(XosConstant.getObjTableName(bucket),fileKey)) {
+            String expectMd5 = null;
+            Integer expectChunkIndex = 0;
+            UploadTask uploadInfo = null;
+            do {
+                uploadInfo = taskMapper.getUploadInfo(uploadId);
+                expectChunkIndex = uploadInfo.getExpectChunk();
+                expectMd5 = UploadUtil.getChunkMd5(uploadId, expectChunkIndex);
+
+            } while(!ObjectUtils.nullSafeEquals(expectMd5,chunkMd5) && sleep());
+            if (size <= XosConstant.FILE_STORE_THRESHOLD) {
+                // 已存在 ，追加
+                Append append = new Append(fileKey.getBytes());
+                append.add(XosConstant.OBJ_CONTENT_COLUMN_FAMILY_BYTES, XosConstant.OBJ_CONTENT_QUALIFIER,content.array());
+                hbaseUtil.appendRow(XosConstant.getObjTableName(bucket),append);
+            } else {
+                // 放入HDFS
+                String fileDir = XosConstant.FILE_STORE_ROOT + XosConstant.SEPARATOR + bucket + XosConstant.SEPARATOR + sequenceId;
+                InputStream inputStream = new ByteBufferInputStream(content);
+                hdfsUtil.appendFile(fileDir, fileName, inputStream, size, (short) 1);
+            }
+            taskMapper.updateTaskChunk(uploadId);
+            if(expectChunkIndex + 1 == uploadInfo.getTotalChunk()) {
+                taskMapper.updateTaskStatus(uploadId,XosConstant.UPLOAD_TASK_FINISH);
+            }
+            return XosSuccessResponse.build(new UploadResult(chunkMd5));
+        }
         Put contentPut = new Put(Bytes.toBytes(fileKey));
         // 文件类型
         if (!StringUtils.isEmpty(category)) {
@@ -122,8 +167,15 @@ public class XOSServiceImpl implements XOSService {
             hdfsUtil.createFile(fileDir, fileName, inputStream, size, (short) 1);
         }
         hbaseUtil.putRow(XosConstant.getObjTableName(bucket), contentPut);
+        taskMapper.updateTaskChunk(uploadId);
+        return XosSuccessResponse.build(new UploadResult(chunkMd5));
     }
 
+
+    private boolean sleep() throws Exception {
+        Thread.sleep(500);
+        return  true;
+    }
 
     private String becomeFileKey(String sequenceId, String fileName) {
         return new StringBuilder().append(sequenceId).append("_").append(fileName).toString();
@@ -160,6 +212,9 @@ public class XOSServiceImpl implements XOSService {
     @Override
     public ObjectListResult listDir(String bucket, String dir) throws Exception {
         // 查询目录表
+        if(!dir.endsWith(XosConstant.SEPARATOR)) {
+            throw new XosException(XosConstant.LIST_DIR_FAIL);
+        }
         Get get = new Get(Bytes.toBytes(dir));
         get.addFamily(XosConstant.DIR_SUB_COLUMN_FAMILY_BYTES);
 
@@ -217,6 +272,7 @@ public class XOSServiceImpl implements XOSService {
     /**
      * 下载文件
      * TODO 断点续传
+     *
      * @param bucket
      * @param dir
      * @param fileName
@@ -232,7 +288,7 @@ public class XOSServiceImpl implements XOSService {
         String objKey = this.becomeFileKey(sequenceId, fileName);
         Result result = hbaseUtil.getRow(XosConstant.getObjTableName(bucket), objKey);
         if (result.isEmpty()) {
-            return null;
+            throw new XosException(XosConstant.DOWNLOAD_FAIL);
         }
         XosObject xosObject = new XosObject();
         ObjectMetaData objectMetaData = new ObjectMetaData();
@@ -254,56 +310,59 @@ public class XOSServiceImpl implements XOSService {
         return xosObject;
     }
 
-    /**
-     * 删除文件或文件夹
-     * @param bucket
-     * @param dir
-     * @param isDir
-     * @throws Exception
-     */
     @Override
-    public void deleteObject(String bucket, String dir, boolean isDir) throws Exception {
-        // 判断是否为目录
-        if (isDir && dir.endsWith(XosConstant.SEPARATOR)) {
-            // 判断目录是否为空
-            if (!isDirEmpty(bucket, dir)) {
-                throw new XosException(XosConstant.DIR_NOT_EMPTY, "dir is not empty");
-            }
-
-            // 从父目录删除数据
-            String dir1 = dir.substring(0, dir.lastIndexOf(XosConstant.SEPARATOR));
-            String dirName = dir1.substring(dir.lastIndexOf(XosConstant.SEPARATOR) + 1);
-            if (StringUtils.hasText(dirName)) {
-                String parentDir = dir.substring(0, dir.lastIndexOf(dirName)); // 父目录名称
-                hbaseUtil.deleteColumnQualifier(XosConstant.getDirTableName(bucket), parentDir, XosConstant.DIR_SUB_COLUMN_FAMILY, dirName);
-            }
-            // 从目录表中删除
-            hbaseUtil.deleteRow(XosConstant.getDirTableName(bucket), dir);
-
-        } else {
-            // 获取文件的length，判断是存在HBase还是HDFS
-            String parentDir = dir.substring(0, dir.lastIndexOf(XosConstant.SEPARATOR) + 1);
-            String fileName = dir.substring(dir.lastIndexOf(XosConstant.SEPARATOR) + 1);
-            String seqId = getDirSequenceId(bucket, parentDir);
-            String objKey = this.becomeFileKey(seqId,fileName);
-            Get get = new Get(objKey.getBytes());
-            // 查询长度
-            get.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_SIZE_QUALIFIER);
-            Result result = hbaseUtil.getRow(XosConstant.getObjTableName(bucket), get);
-            if (result.isEmpty()) {
-                return;
-            }
-            long size = Bytes.toLong(result.getValue(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_SIZE_QUALIFIER));
-            // TODO 回收站
-            if (size > XosConstant.FILE_STORE_THRESHOLD) {
-                // 从HDFS删除
-                String fileDir = XosConstant.FILE_STORE_ROOT + XosConstant.SEPARATOR + bucket + XosConstant.SEPARATOR + seqId;
-                this.hdfsUtil.deleteFile(fileDir, fileName);
-            } else {
-                // 从HBase删除
-                hbaseUtil.deleteRow(XosConstant.getObjTableName(bucket), objKey);
-            }
+    public void deleteDir(String bucket, String dir) throws Exception {
+        if(!dir.endsWith(XosConstant.SEPARATOR)) {
+            return;
         }
+        // 判断目录是否为空
+        if (!isDirEmpty(bucket, dir)) {
+            throw new XosException(XosConstant.DIR_NOT_EMPTY, "dir is not empty");
+        }
+
+        // 从父目录删除数据
+        String dir1 = dir.substring(0, dir.lastIndexOf(XosConstant.SEPARATOR));
+        String dirName = dir1.substring(dir1.lastIndexOf(XosConstant.SEPARATOR) + 1);
+        if (StringUtils.hasText(dirName)) {
+            String parentDir = dir.substring(0, dir.lastIndexOf(dirName)); // 父目录名称
+            hbaseUtil.deleteColumnQualifier(XosConstant.getDirTableName(bucket), parentDir, XosConstant.DIR_SUB_COLUMN_FAMILY, dirName);
+        }
+        // 从目录表中删除
+        hbaseUtil.deleteRow(XosConstant.getDirTableName(bucket), dir);
+    }
+
+    @Override
+    public void deleteObject(String bucket, String parentDir, String objectName) throws Exception {
+        if(!parentDir.endsWith(XosConstant.SEPARATOR)) {
+            return;
+        }
+        String seqId = getDirSequenceId(bucket, parentDir);
+        String objKey = this.becomeFileKey(seqId, objectName);
+        Get get = new Get(objKey.getBytes());
+        // 查询长度
+        get.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_SIZE_QUALIFIER);
+        Result result = hbaseUtil.getRow(XosConstant.getObjTableName(bucket), get);
+        if (result.isEmpty()) {
+            return;
+        }
+        long size = Bytes.toLong(result.getValue(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_SIZE_QUALIFIER));
+        // TODO 回收站
+        if (size > XosConstant.FILE_STORE_THRESHOLD) {
+            // 从HDFS删除
+            String fileDir = XosConstant.FILE_STORE_ROOT + XosConstant.SEPARATOR + bucket + XosConstant.SEPARATOR + seqId;
+            this.hdfsUtil.deleteFile(fileDir, objectName);
+        }
+        // 从HBase删除
+        hbaseUtil.deleteRow(XosConstant.getObjTableName(bucket), objKey);
+    }
+
+    @Override
+    @Transactional
+    public String createUploadTask(String fileName, List<String> md5List) throws Exception {
+        String uploadId = UUIDUtil.getUUIDString();
+        taskMapper.createUploadTask(uploadId, fileName, md5List.size());
+        UploadUtil.putFileMd5List(uploadId, md5List);
+        return uploadId;
     }
 
     private boolean dirExist(String bucket, String dir) {
@@ -320,6 +379,7 @@ public class XOSServiceImpl implements XOSService {
 
     /**
      * 新建文件夹
+     *
      * @param bucket
      * @param parent
      * @param newDirName
@@ -352,7 +412,6 @@ public class XOSServiceImpl implements XOSService {
         dirPut.addColumn(XosConstant.DIR_META_COLUMN_FAMILY_BYTES, XosConstant.DIR_SEQID_QUALIFIER, Bytes.toBytes(seqId));
         hbaseUtil.putRow(XosConstant.getDirTableName(bucket), dirPut);
         return seqId;
-
     }
 
     private String makeDirSequenceId(String bucket) throws Exception {

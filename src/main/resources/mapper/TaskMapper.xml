@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="my.xzq.xos.server.mapper.TaskMapper">
+    <insert id="createUploadTask">
+        INSERT INTO info_task(upload_id, file_name,total_chunk)
+        values(#{uploadId},#{fileName},#{totalChunk})
+    </insert>
+    <update id="updateTaskChunk">
+        UPDATE info_task set expect_chunk = expect_chunk + 1
+        where upload_id = #{uploadId}
+    </update>
+    <update id="updateTaskStatus">
+        UPDATE info_task set status = #{status}
+        where upload_id = #{uploadId}
+    </update>
+    <select id="getUploadInfo" parameterType="string" resultType="my.xzq.xos.server.model.UploadTask">
+        select * from info_task where upload_id = #{uploadId}
+    </select>
+</mapper>

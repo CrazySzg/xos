@@ -24,8 +24,8 @@ public class HDFSConfiguration {
     @Bean("hadoopFileSystem")
     public FileSystem hadoopFileSystem() throws Exception {
         org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
-        conf.addResource(new Path(ClassLoader.getSystemResource("hdfs/core-site.xml").toURI()));
-        conf.addResource(new Path(ClassLoader.getSystemResource("hdfs/hdfs-site.xml").toURI()));
+       // conf.addResource(new Path(ClassLoader.getSystemResource("hdfs/core-site.xml").toURI()));
+       // conf.addResource(new Path(ClassLoader.getSystemResource("hdfs/hdfs-site.xml").toURI()));
         // System.setProperty("HADOOP_USER_NAME","hadoop");
 
         return FileSystem.get(URI.create(url),conf,user);

@@ -1,12 +1,10 @@
 package my.xzq.xos.server;
 
+import my.xzq.xos.server.common.XosConstant;
 import my.xzq.xos.server.utils.HbaseUtil;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.*;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
@@ -121,6 +119,22 @@ public class TestHbase {
                 System.out.println(Bytes.toString(result.getRow()));
             }
         }
+    }
+
+    @Test
+    public void delTable() {
+
+        hbaseUtil.removeTable("xos_dir_59410c3f1d7c44edb7405af201505c44");
+        hbaseUtil.removeTable("xos_obj_59410c3f1d7c44edb7405af201505c44");
+    }
+
+    @Test
+    public void putRoot() {
+        Put rootDir = new Put(Bytes.toBytes("/"));
+        long incrementColumnValue = hbaseUtil.incrementColumnValue(XosConstant.BUCKET_DIR_SEQ_TABLE, "59410c3f1d7c44edb7405af201505c44", XosConstant.BUCKET_DIR_SEQ_COLUMN_FAMILY_BYTES, XosConstant.BUCKET_DIR_SEQ_COLUMN_QUALIFIER_BYTES, 1);
+        String seqId = String.format("%d_%d", incrementColumnValue % 64, incrementColumnValue);
+        rootDir.addColumn(XosConstant.DIR_META_COLUMN_FAMILY_BYTES, XosConstant.DIR_SEQID_QUALIFIER, Bytes.toBytes(seqId));
+        hbaseUtil.putRow(XosConstant.getDirTableName("59410c3f1d7c44edb7405af201505c44"),rootDir);
     }
 
 }

@@ -10,4 +10,6 @@ public interface UserMapper {
     User loadUserByUsername(@Param("username") String username);
 
     User getUserInfoWithoutPassword(@Param("username") String username);
+
+    Integer updateUserCapacity(@Param("used") Long used,@Param("userUUID") String userUUID);
 }

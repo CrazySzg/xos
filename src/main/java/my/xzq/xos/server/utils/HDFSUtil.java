@@ -76,6 +76,38 @@ public class HDFSUtil {
     }
 
     /**
+     * 文件追加
+     * @param dir
+     * @param name
+     * @param inputStream
+     * @param length
+     * @param replication
+     * @throws Exception
+     */
+    public void appendFile(String dir, String name, InputStream inputStream, long length, short replication) throws Exception {
+        this.mkdirs(dir);
+        if(!existFile(dir,name)) {
+            this.createFile(dir,name,inputStream,length,replication);
+        } else {
+            Path path = new Path(dir + SEPARATOR + name);
+            FSDataOutputStream appendStream = this.fileSystem.append(path, 512 * 1024);
+            try {
+                fileSystem.setPermission(path, FsPermission.getFileDefault());
+                // 开始写入文件
+                byte[] buffer = new byte[512 * 1024];
+                int len = -1;
+                while ((len = inputStream.read(buffer)) > 0) {
+                    appendStream.write(buffer, 0, len);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                inputStream.close();
+                appendStream.close();
+            }
+        }
+    }
+    /**
      *
      * @param dir hdfs目录
      * @return

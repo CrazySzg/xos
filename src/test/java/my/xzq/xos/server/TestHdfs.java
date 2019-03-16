@@ -36,7 +36,7 @@ public class TestHdfs {
 
     @Test
     public void test1() throws Exception {
-        File file = new File("C:\\Users\\Administrator\\Pictures\\16.jpg");
+        File file = new File("/home/xuezhiqiang/Pictures/Balloon_by_Matt_Benson.jpg");
         FileInputStream fileInputStream = new FileInputStream(file);
         hdfsUtil.createFile("/test222","1.jpg",fileInputStream,file.length(),(short)1);
     }

@@ -313,6 +313,16 @@ public class HbaseUtil {
         }
     }
 
+    public boolean appendRow(String tableName,Append append) {
+        try (Table table = connection.getTable(TableName.valueOf(tableName))) {
+            table.append(append);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new XosException(XosConstant.PUT_HBASE_ROW_DATA_FAIL, "append row error");
+        }
+    }
+
     public boolean putRow(String tableName, Put put) {
         try (Table table = connection.getTable(TableName.valueOf(tableName))) {
             table.put(put);

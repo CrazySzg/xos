@@ -1,9 +1,10 @@
 package my.xzq.xos.server.controller;
 
 import my.xzq.xos.server.common.response.XosSuccessResponse;
-import my.xzq.xos.server.dto.UserParam;
+import my.xzq.xos.server.dto.request.UserParam;
 import my.xzq.xos.server.exception.XosException;
 import my.xzq.xos.server.model.User;
+import my.xzq.xos.server.services.XosService;
 import my.xzq.xos.server.services.impl.XosUserService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +27,17 @@ public class UserController {
     @Autowired
     private XosUserService userService;
 
+    @Autowired
+    private XosService xosService;
+
     @PostMapping("/register")
-    public XosSuccessResponse<Integer> test(@Valid @RequestBody UserParam param) {
+    public XosSuccessResponse<Integer> register(@Valid @RequestBody UserParam param) throws Exception {
         try {
             User user = new User();
             BeanUtils.copyProperties(param,user);
-            return XosSuccessResponse.build(userService.createUser(user));
+            String userUUID = userService.createUser(user);
+            xosService.createBucketStore(userUUID);
+            return XosSuccessResponse.buildEmpty();
         } catch (XosException e) {
             e.printStackTrace();
             throw e;

@@ -11,10 +11,14 @@ public final class XosConstant {
 
     public static final String SEPARATOR = "/";
 
+    public static final Integer CHUNK_SIZE = 4 * 1024 * 1024;
+
     // 目录表前缀
     public final static String DIR_TABLE_PREFIX = "xos_dir_";
     // 对象表前缀
     public final static String OBJ_TABLE_PREFIX = "xos_obj_";
+
+    public final static Integer UPLOAD_TASK_FINISH = 1;
 
     // 目录表meta信息列族名
     public final static String DIR_META_COLUMN_FAMILY = "meta";
@@ -125,4 +129,16 @@ public final class XosConstant {
     public static final Integer FILENAME_CAN_NOT_BE_NULL = 116;
     // 文件夹已存在
     public static final Integer DIR_ALREADY_EXIST = 117;
+    // 剩余空间不足
+    public static final Integer NO_EXTRA_SPACE_LEAVE = 118;
+    // 上传文件失败
+    public static final Integer UPLOAD_FAIL = 119;
+    //新建文件夹失败
+    public static final Integer MAKE_DIR_FAIL = 120;
+    //删除操作失败
+    public static final Integer DELETE_OPER_FAIL = 121;
+    //获取列表失败
+    public static final Integer LIST_DIR_FAIL = 122;
+    // 文件下载失败
+    public static final Integer DOWNLOAD_FAIL = 123;
 }

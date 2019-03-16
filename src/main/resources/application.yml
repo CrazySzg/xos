@@ -7,7 +7,7 @@ spring:
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
     url: jdbc:mysql://localhost:3306/xos?useUnicode=true&useSSL=false&characterEncoding=utf8&autoReconnect=true&rewriteBatchedStatements=TRUE&failOverReadOnly=false
-    password: 123
+    password: 123456
     username: root
     type: com.alibaba.druid.pool.DruidDataSource
     initialSize: 5
@@ -26,13 +26,20 @@ spring:
     default-property-inclusion: non_null
     serialization:
       write-dates-as-timestamps: true
+  servlet:
+    multipart:
+      # 上传一个文件最大值，默认为1MB
+      max-file-size: 10MB
+      # 上传多个文件最大值，50MB，默认为10MB
+      max-request-size: 100MB
 xos:
   default-avator-url: http://www.baidu.com
   hadoop:
     file-system:
       user: hadoop
-      url: hdfs://bigdata:8020
+      url: hdfs://xuezhiqiang-PC:8020
       block-size: 134217728
+      default-capacity: 1073741824
 mybatis:
   mapper-locations: classpath:mapper/*Mapper.xml
   config-location: classpath:mybatis-config.xml

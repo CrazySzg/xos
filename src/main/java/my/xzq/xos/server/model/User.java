@@ -12,6 +12,7 @@ import java.util.Date;
 public class User {
 
     private String id;
+    private String userUUID;
     private String username;
     private String password;
     private String avator;

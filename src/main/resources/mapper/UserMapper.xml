@@ -5,20 +5,23 @@
 <mapper namespace="my.xzq.xos.server.mapper.UserMapper">
     <insert id="insert" parameterType="my.xzq.xos.server.model.User" useGeneratedKeys="true" keyProperty="id">
       insert into info_user
-      (username,
+      (user_uuid,
+      username,
       password,
       avator,
       email,
       phone,
+      capacity,
       used,
       create_time,
       update_time)
-      VALUES (
+      VALUES ( #{userUUID},
       #{username},
       #{password},
       #{avator},
       #{email},
       #{phone},
+      #{capacity},
       #{used},
       #{createTime},
       #{updateTime}
@@ -28,6 +31,7 @@
     <select id="getUserInfoWithoutPassword" parameterType="string" resultType="my.xzq.xos.server.model.User">
        SELECT
        id,
+        user_uuid,
        username,
        avator,
        email,
@@ -44,6 +48,7 @@
     <select id="loadUserByUsername" parameterType="string" resultType="my.xzq.xos.server.model.User">
         SELECT
         id,
+        user_uuid,
         username,
         password,
         avator,
@@ -57,4 +62,8 @@
         WHERE
         username = #{username}
     </select>
+
+    <update id="updateUserCapacity">
+        update info_user set used = used + #{used} where user_uuid = #{userUUID}
+    </update>
 </mapper>

@@ -21,7 +21,7 @@ import java.util.Date;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(XosException.class)
-    @ResponseStatus(HttpStatus.NOT_ACCEPTABLE)
+    @ResponseStatus(HttpStatus.OK)
     public String handleXosException(HttpServletRequest request, XosException exception) throws IOException {
         String url = this.getPath(request);
         XosFailureResponse response =
