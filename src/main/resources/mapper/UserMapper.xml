@@ -63,6 +63,24 @@
         username = #{username}
     </select>
 
+    <select id="loadUserByEmail" parameterType="string" resultType="my.xzq.xos.server.model.User">
+        SELECT
+        id,
+        user_uuid,
+        username,
+        password,
+        avator,
+        email,
+        phone,
+        capacity,
+        used,
+        create_time,
+        update_time
+        FROM info_user
+        WHERE
+        email = #{email}
+    </select>
+
     <update id="updateUserCapacity">
         update info_user set used = used + #{used} where user_uuid = #{userUUID}
     </update>

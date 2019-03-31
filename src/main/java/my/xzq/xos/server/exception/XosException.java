@@ -12,6 +12,8 @@ public class XosException extends RuntimeException {
     private Integer code;
     private String message;
 
+    public XosException() {}
+
     public XosException(Integer code, String message) {
         this.code = code;
         this.message = message;

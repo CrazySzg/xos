@@ -7,6 +7,7 @@ import java.util.List;
 @Data
 public class MD5ListParam {
 
-    String fileName;
-    List<String> checkMd5;
+    private String uploadId;
+    private String fileName;
+    private List<String> checkMd5;
 }

@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.impl.TextCodec;
+import my.xzq.xos.server.utils.JWTUtil;
 import org.junit.Test;
 
 import java.util.Date;
@@ -105,5 +106,9 @@ public class TestJwt {
         System.out.println(Pattern.compile("\\d{11}").matcher(error).matches());
     }
 
+    @Test
+    public void test6() {
+        System.out.println(JWTUtil.getDownloadTokenClaims("eyJhbGciOiJIUzI1NiJ9.eyJidWNrZXQiOiJkNzRlYzZkZmMwM2E0ZjFiYmQzMjRjZjhlOGRmOGVkYiIsImZpbGVQYXRoIjoiMC1fOGZmMmU4ZDMzZmRhNDQxNWJiZjA1ODFhMTRjNWZkMWMiLCJleHAiOjE1NTM5MjAxMjIsImlhdCI6MTU1MzkxNjUyMn0.RM7ckKHvozixCG8NumRgGlzImUhvsm_rw6nLujd3qgI"));
 
+    }
 }

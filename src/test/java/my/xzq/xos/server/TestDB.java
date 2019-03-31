@@ -32,20 +32,20 @@ public class TestDB {
 
     @Test
     public void test() {
-        User user = new User();
-        user.setUsername("x13zq");
-        user.setPassword("123");
-        user.setPhone("15626164246");
+        User xosUser = new User();
+        xosUser.setUsername("x13zq");
+        xosUser.setPassword("123");
+        xosUser.setPhone("15626164246");
         UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
-        userMapper.insert(user);
-        System.out.println(user);
+        userMapper.insert(xosUser);
+        System.out.println(xosUser);
     }
 
     @Test
     public void loadUser() throws IOException {
-        User user = userMapper.loadUserByUsername("xzq");
-        System.out.println(user);
-        System.out.println(JsonUtil.toJson(user));
+        User xosUser = userMapper.loadUserByUsername("xzq");
+        System.out.println(xosUser);
+        System.out.println(JsonUtil.toJson(xosUser));
     }
 
 

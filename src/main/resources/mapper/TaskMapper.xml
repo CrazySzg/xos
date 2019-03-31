@@ -4,8 +4,8 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="my.xzq.xos.server.mapper.TaskMapper">
     <insert id="createUploadTask">
-        INSERT INTO info_task(upload_id, file_name,total_chunk)
-        values(#{uploadId},#{fileName},#{totalChunk})
+        INSERT INTO info_task(upload_id, file_name,total_chunk,md5_list)
+        values(#{uploadId},#{fileName},#{totalChunk},#{md5List})
     </insert>
     <update id="updateTaskChunk">
         UPDATE info_task set expect_chunk = expect_chunk + 1

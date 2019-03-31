@@ -67,6 +67,7 @@ public class HDFSUtil {
             while ((len = inputStream.read(buffer)) > 0) {
                 dataOutputStream.write(buffer, 0, len);
             }
+            dataOutputStream.flush();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -90,6 +91,7 @@ public class HDFSUtil {
             this.createFile(dir,name,inputStream,length,replication);
         } else {
             Path path = new Path(dir + SEPARATOR + name);
+           // this.fileSystem.setReplication(path,(short) 1);
             FSDataOutputStream appendStream = this.fileSystem.append(path, 512 * 1024);
             try {
                 fileSystem.setPermission(path, FsPermission.getFileDefault());
@@ -99,6 +101,7 @@ public class HDFSUtil {
                 while ((len = inputStream.read(buffer)) > 0) {
                     appendStream.write(buffer, 0, len);
                 }
+                appendStream.flush();
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {

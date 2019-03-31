@@ -122,10 +122,22 @@ public class TestHbase {
     }
 
     @Test
+    public void deleteQualifier() {
+        hbaseUtil.deleteColumnQualifier("xos_dir_3e13ac777fd1451e83b7dcc74994dbb1","0-","sub","new1");
+    }
+
+    @Test
+    public void deleteRoot() {
+
+    }
+
+    @Test
     public void delTable() {
 
-        hbaseUtil.removeTable("xos_dir_59410c3f1d7c44edb7405af201505c44");
-        hbaseUtil.removeTable("xos_obj_59410c3f1d7c44edb7405af201505c44");
+        hbaseUtil.removeTable("xos_dir_b3c37e632c814548b33c57dcea59b81e");
+        hbaseUtil.removeTable("xos_dir_f29143acc8c24da7af987ba90bda9edd");
+        hbaseUtil.removeTable("xos_obj_b3c37e632c814548b33c57dcea59b81e");
+        hbaseUtil.removeTable("xos_obj_f29143acc8c24da7af987ba90bda9edd");
     }
 
     @Test

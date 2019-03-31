@@ -12,6 +12,7 @@ public class UploadTask {
     private String fileName;
     private Integer totalChunk;
     private Integer expectChunk;
+    private String md5List;
     private Integer status;
     private Date createTime;
     private Date updateTime;

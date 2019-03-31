@@ -2,6 +2,7 @@ package my.xzq.xos.server.common.handler;
 
 import my.xzq.xos.server.common.response.XosFailureResponse;
 import my.xzq.xos.server.exception.XosException;
+import my.xzq.xos.server.exception.XosValidationException;
 import my.xzq.xos.server.utils.JsonUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -28,6 +29,16 @@ public class GlobalExceptionHandler {
                 new XosFailureResponse(exception.getCode(), exception.getMessage(), new Date(), url);
         return JsonUtil.toJson(response,true);
     }
+
+    @ExceptionHandler(XosValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String handleXosValidationException(HttpServletRequest request, XosValidationException exception) throws IOException {
+        String url = this.getPath(request);
+        XosFailureResponse response =
+                new XosFailureResponse(exception.getCode(), exception.getMessage(), new Date(), url);
+        return JsonUtil.toJson(response,true);
+    }
+
 
    /* @ExceptionHandler(Exception.class)
     public String handleException(HttpServletRequest request, Exception ex) throws IOException {

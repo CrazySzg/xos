@@ -1,4 +1,5 @@
 server:
+  port: 8088
   servlet:
     context-path: /xos
     application-display-name: xos
@@ -7,7 +8,7 @@ spring:
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
     url: jdbc:mysql://localhost:3306/xos?useUnicode=true&useSSL=false&characterEncoding=utf8&autoReconnect=true&rewriteBatchedStatements=TRUE&failOverReadOnly=false
-    password: 123456
+    password: 123
     username: root
     type: com.alibaba.druid.pool.DruidDataSource
     initialSize: 5
@@ -37,7 +38,7 @@ xos:
   hadoop:
     file-system:
       user: hadoop
-      url: hdfs://xuezhiqiang-PC:8020
+      url: hdfs://bigdata:8020
       block-size: 134217728
       default-capacity: 1073741824
 mybatis:

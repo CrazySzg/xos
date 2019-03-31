@@ -5,7 +5,8 @@ import org.apache.ibatis.annotations.Param;
 
 public interface TaskMapper {
 
-    Integer createUploadTask(@Param("uploadId")String uploadId, @Param("fileName")String fileName,@Param("totalChunk")Integer totalChunk);
+    Integer createUploadTask(@Param("uploadId")String uploadId, @Param("fileName")String fileName,
+                             @Param("totalChunk")Integer totalChunk, @Param("md5List") String md5List);
 
     Integer updateTaskChunk(@Param("uploadId") String uploadId);
 

@@ -12,18 +12,18 @@ import java.util.Date;
 @Data
 public class XosSuccessResponse<T> implements XosResponse {
 
-    private Integer successCode = XosConstant.SUCCESS;
+    private Integer code = XosConstant.SUCCESS;
     //返回json串
-    private T successResult;
+    private T data;
 
     private Date timestamp = new Date();
 
-    private XosSuccessResponse(T successResult) {
-        this.successResult = successResult;
+    private XosSuccessResponse(T data) {
+        this.data = data;
     }
 
-    public static <T> XosSuccessResponse<T> build(T successResult) {
-        return new XosSuccessResponse<>(successResult);
+    public static <T> XosSuccessResponse<T> build(T data) {
+        return new XosSuccessResponse<>(data);
     }
 
     public static <T> XosSuccessResponse<T> buildEmpty() {

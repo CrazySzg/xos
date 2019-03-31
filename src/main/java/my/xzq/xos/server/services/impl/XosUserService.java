@@ -5,6 +5,7 @@ import my.xzq.xos.server.common.XosErrMsgProperties;
 import my.xzq.xos.server.exception.XosException;
 import my.xzq.xos.server.mapper.UserMapper;
 import my.xzq.xos.server.model.User;
+import my.xzq.xos.server.model.User;
 import my.xzq.xos.server.services.XosUserOperator;
 import my.xzq.xos.server.utils.UUIDUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,13 +40,13 @@ public class XosUserService implements UserDetailsService, XosUserOperator {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userMapper.loadUserByUsername(username);
-        if (user == null)
+        User xosUser = userMapper.loadUserByUsername(username);
+        if (xosUser == null)
             throw new UsernameNotFoundException("username " + username + " not found");
         return org.springframework.security.core.userdetails.User
                 .builder()
-                .username(user.getUsername())
-                .password(user.getPassword())
+                .username(xosUser.getUsername())
+                .password(xosUser.getPassword())
                 .roles("USER").build();
 
     }
@@ -57,19 +58,23 @@ public class XosUserService implements UserDetailsService, XosUserOperator {
 
     @Override
     @Transactional
-    public String createUser(User user) throws XosException {
+    public String createUser(User xosUser) throws XosException {
         Date now = new Date();
-        User loadedUser = userMapper.loadUserByUsername(user.getUsername());
-        if (loadedUser != null) {
+        User loadedXosUser = userMapper.loadUserByUsername(xosUser.getUsername());
+        if (loadedXosUser != null) {
             throw new XosException(XosConstant.REGISTER_USER_FAIL);
         }
+        User xosUserByEmail = userMapper.loadUserByEmail(xosUser.getEmail());
+        if(xosUserByEmail != null) {
+            throw new XosException(XosConstant.EMAIL_ALREADY_BINDED);
+        }
         String userUUID = UUIDUtil.getUUIDString();
-        user.setUserUUID(userUUID);
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setUsed(0L);
-        user.setCreateTime(now);
-        user.setUpdateTime(now);
-        userMapper.insert(user);
+        xosUser.setUserUUID(userUUID);
+        xosUser.setPassword(passwordEncoder.encode(xosUser.getPassword()));
+        xosUser.setUsed(0L);
+        xosUser.setCreateTime(now);
+        xosUser.setUpdateTime(now);
+        userMapper.insert(xosUser);
         return userUUID;
     }
 

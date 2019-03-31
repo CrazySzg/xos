@@ -1,6 +1,9 @@
 package my.xzq.xos.server.configuration.security.handler;
 
+import my.xzq.xos.server.model.User;
+import my.xzq.xos.server.services.impl.XosUserService;
 import my.xzq.xos.server.utils.JWTUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -18,12 +21,15 @@ import java.io.IOException;
 @Component
 public class XosAuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
+    @Autowired
+    private XosUserService userService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
         UserDetails principle = (UserDetails) authentication.getPrincipal();
-        String token = JWTUtil.generateToken(principle);
+        User userInfo = userService.getUserInfo(principle.getUsername());
+        String token = JWTUtil.generateToken(userInfo);
         response.setHeader("Authorization",token);
     }
 

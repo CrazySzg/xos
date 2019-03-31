@@ -6,7 +6,7 @@ import my.xzq.xos.server.model.User;
 
 public interface XosUserOperator {
 
-    String createUser(User user) throws XosException;
+    String createUser(User xosUser) throws XosException;
 
     User getUserInfo(String username) throws XosException;
 

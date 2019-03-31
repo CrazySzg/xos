@@ -8,4 +8,5 @@ import lombok.Data;
 public class UploadResult {
 
     private String md5;
+    private Integer expectedChunk;
 }

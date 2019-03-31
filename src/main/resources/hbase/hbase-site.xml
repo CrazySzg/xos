@@ -23,9 +23,10 @@
 <configuration>
     <property>
         <name>hbase.rootdir</name>
-        <value>hdfs://xuezhiqiang-PC:8020/hbase</value>
+        <!--<value>hdfs://xuezhiqiang-PC:8020/hbase</value>-->
+        <value>hdfs://bigdata:8020</value>
     </property>
-   <!-- <property>
+    <property>
         <name>hbase.zookeeper.quorum</name>
         <value>bigdata</value>
     </property>
@@ -38,7 +39,7 @@
     <property>
         <name>hbase.zookeeper.property.dataDir</name>
         <value>/tmp/zookeeper</value>
-    </property>-->
+    </property>
 
     <property>
         <name>hbase.cluster.distributed</name>

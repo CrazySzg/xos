@@ -92,7 +92,7 @@ public class HbaseUtil {
         try {
             Delete delete = new Delete(rowKey.getBytes());
             //删除指定列的最新版本
-            delete.addColumn(columnFamily.getBytes(), columnQualifier.getBytes());
+            delete.addColumns(columnFamily.getBytes(), columnQualifier.getBytes());
             return deleteRow(tableName, delete);
         } catch (Exception e) {
             e.printStackTrace();
@@ -351,12 +351,11 @@ public class HbaseUtil {
     /**
      * 批量插入行数据
      *
-     * @param connection
      * @param tableName
      * @param puts
      * @return
      */
-    public static boolean batchPutRows(Connection connection, String tableName, List<Put> puts) {
+    public  boolean batchPutRows(String tableName, List<Put> puts) {
         final BufferedMutator.ExceptionListener listener = new BufferedMutator.ExceptionListener() {
             @Override
             public void onException(RetriesExhaustedWithDetailsException e, BufferedMutator mutator) {

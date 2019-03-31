@@ -59,10 +59,10 @@ public class TestSlice {
     public void test4() throws Exception {
         List<String> list = new ArrayList<>();
         OkHttpClient client = new OkHttpClient();
-        int chunkSize = 4 * 1024 * 1024;
+        int chunkSize = 4 * 1024;
         byte[] bytes;
         String url = "http://127.0.0.1:8080/xos/main/preCreate";
-        File file = new File("/home/xuezhiqiang/Videos/123.mkv");
+        File file = new File("/home/xuezhiqiang/Pictures/Balloon_by_Matt_Benson.jpg");
         RandomAccessFile raf = new RandomAccessFile(file, "r");
         long fileLength = raf.length();
         long count = 0;
@@ -92,8 +92,8 @@ public class TestSlice {
 //        Response response = client.newCall(request).execute();
 
 
-        System.out.println(JsonUtil.toJson(list));
-
+        System.out.println(JsonUtil.toJson(list,true));
+        System.out.println(list.size());
     //    System.out.println(response.body());
 
 
@@ -105,23 +105,23 @@ public class TestSlice {
         OkHttpClient client = new OkHttpClient();
         int chunkSize = 4 * 1024 * 1024;
         byte[] bytes;
-        String url = "http://127.0.0.1:8080/xos/main/create-object";
-        String fileName = "123.mkv";
-        File file = new File("/home/xuezhiqiang/Videos/123.mkv");
+        String url = "http://127.0.0.1:8088/xos/main/create-object";
+        String fileName = "Balloon_by_Matt_Benson.jpg";
+        File file = new File("/home/xuezhiqiang/Pictures/Balloon_by_Matt_Benson.jpg");
         RandomAccessFile raf = new RandomAccessFile(file, "r");
         long fileLength = file.length();
 
         Map<String,String> header = new HashMap<>();
-        header.put("Authorization","eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4enEiLCJqdGkiOiJ4enEiLCJpYXQiOjE1NTI2NDAwNjgsImV4cCI6MTU1MjY0MzY2OH0.MqOHrJvxI-YBpEoZD7vldeiTuwfBQm1mLcnh8l2SQV8");
+        header.put("Authorization","eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4enEiLCJqdGkiOiJ4enEiLCJpYXQiOjE1NTM1OTMwMDYsImV4cCI6MTU1MzU5NjYwNn0.lIcVNpUsnXghvk4sEH0CA2KtNXAuSugc7mQ2PEbHy_k");
 
         Map<String,String> nameValue = new HashMap<>();
         nameValue.put("fileSize",String.valueOf(fileLength));
         nameValue.put("fileName",fileName);
-        nameValue.put("targetDir","/myfirstdir/seconddir/");
+        nameValue.put("targetDir","/");
         nameValue.put("category","1");
-        nameValue.put("suffix",",mkv");
+        nameValue.put("suffix",",jpg");
    //     nameValue.put("chunkMD5",md5);
-        nameValue.put("uploadId","e702b4692f76420a9c9bcf5efe2f5076");
+        nameValue.put("uploadId","5528c0a8a2814de6adbf41023d5340c3");
    //     nameValue.put("partSeq","0");
 
         long count = 0;

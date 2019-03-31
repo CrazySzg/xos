@@ -5,9 +5,11 @@ import org.apache.ibatis.annotations.Param;
 
 public interface UserMapper {
 
-    Integer insert(User user);
+    Integer insert(User xosUser);
 
     User loadUserByUsername(@Param("username") String username);
+
+    User loadUserByEmail(@Param("email") String email);
 
     User getUserInfoWithoutPassword(@Param("username") String username);
 

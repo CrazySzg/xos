@@ -19,7 +19,8 @@
 <configuration>
     <property>
         <name>fs.defaultFS</name>
-        <value>hdfs://xuezhiqiang-PC:8020</value>
+        <!--<value>hdfs://xuezhiqiang-PC:8020</value>-->
+        <value>hdfs://bigdata:8020</value>
     </property>
     <property>
         <name>hadoop.tmp.dir</name>

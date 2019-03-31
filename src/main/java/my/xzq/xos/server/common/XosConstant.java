@@ -1,17 +1,26 @@
 package my.xzq.xos.server.common;
 
 import org.apache.hadoop.hbase.filter.*;
-import org.apache.hadoop.hbase.util.Bytes;
 
 public final class XosConstant {
 
-    public static final Integer UNEXPECTED_ERROR = -100000;
+    public static final Integer BAD_PARAM = -100000;
 
     public static final Integer SUCCESS = 200;
 
     public static final String SEPARATOR = "/";
 
+    public static final String ROOT = "0-";
+
+    public static final String STUB = "-";
+
+    public static final String DOWNLOAD_TOKEN_SPLITER = "###";
+
     public static final Integer CHUNK_SIZE = 4 * 1024 * 1024;
+
+    public static final String BUCKET = "bucket";
+
+    public static final String FILEPATH = "filePath";
 
     // 目录表前缀
     public final static String DIR_TABLE_PREFIX = "xos_dir_";
@@ -38,6 +47,10 @@ public final class XosConstant {
     public final static byte[] DIR_SEQID_QUALIFIER = "seqId".getBytes();
     // 目录表对应目录名 用于搜索
     public final static byte[] DIR_NAME_QUALIFIER = "dirName".getBytes();
+    // 目录的父级
+    public final static byte[] DIR_PARENT_QUALIFIER = "parent".getBytes();
+    // 下载需要的盐值
+    public final static byte[] OBJ_DOWNLOAD_SALT_QUALIFIER = "salt".getBytes();
     // 文件名用于搜索
     public final static byte[] OBJ_FILENAME_QUALIFIER = "fileName".getBytes();
     // 文件表content列名
@@ -141,4 +154,20 @@ public final class XosConstant {
     public static final Integer LIST_DIR_FAIL = 122;
     // 文件下载失败
     public static final Integer DOWNLOAD_FAIL = 123;
+    // 输入两次密码不一致
+    public static final Integer PASSWORD_NOT_EQUAL = 124;
+    // 该邮箱已被注册
+    public static final Integer EMAIL_ALREADY_BINDED = 125;
+    // 重命名失败
+    public static final Integer RENAME_FAIL = 126;
+    // 文件名不能空
+    public static final Integer NEW_NAME_CAN_NOT_NULL = 127;
+    // 文件名不能重复
+    public static final Integer FILENAME_CAN_NOT_REPEAT = 128;
+    // 根目录无法删除
+    public static final Integer ROOT_DIR_CANNOT_DELETE = 129;
+    // 目录不存在
+    public static final Integer DIR_NOT_EXIST = 130;
+    // 请求非法
+    public static final Integer OPERATION_ILLEGAL = 131;
 }

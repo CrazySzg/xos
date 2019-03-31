@@ -1,16 +1,21 @@
 package my.xzq.xos.server.controller;
 
+import my.xzq.xos.server.common.XosConstant;
 import my.xzq.xos.server.common.response.XosSuccessResponse;
 import my.xzq.xos.server.dto.request.UserParam;
 import my.xzq.xos.server.exception.XosException;
+import my.xzq.xos.server.exception.XosValidationException;
 import my.xzq.xos.server.model.User;
 import my.xzq.xos.server.services.XosService;
 import my.xzq.xos.server.services.impl.XosUserService;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -31,14 +36,23 @@ public class UserController {
     private XosService xosService;
 
     @PostMapping("/register")
-    public XosSuccessResponse<Integer> register(@Valid @RequestBody UserParam param) throws Exception {
+    public XosSuccessResponse<Integer> register(@Valid @RequestBody UserParam param, BindingResult bindingResult) throws Exception {
+        if(bindingResult.hasErrors()) {
+            ObjectError error = bindingResult.getAllErrors().get(0);
+            throw new XosValidationException(error.getDefaultMessage());
+        }
         try {
-            User user = new User();
-            BeanUtils.copyProperties(param,user);
-            String userUUID = userService.createUser(user);
+            String password = param.getPassword();
+            String confirmPwd = param.getConfirmPwd();
+            if(!StringUtils.equals(password,confirmPwd)) {
+                throw new XosException(XosConstant.PASSWORD_NOT_EQUAL);
+            }
+            User xosUser = new User();
+            BeanUtils.copyProperties(param, xosUser);
+            String userUUID = userService.createUser(xosUser);
             xosService.createBucketStore(userUUID);
             return XosSuccessResponse.buildEmpty();
-        } catch (XosException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw e;
         }

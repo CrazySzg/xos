@@ -8,7 +8,7 @@ import java.util.List;
 @Data
 public class ObjectListResult {
 
-    private int objectCount;
+    private int count;
 
-    private List<XosObjectSummary> objectSummaryList;
+    private List<XosObjectSummary> data;
 }

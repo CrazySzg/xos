@@ -1,7 +1,6 @@
 package my.xzq.xos.server.configuration;
 
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +23,8 @@ public class HDFSConfiguration {
     @Bean("hadoopFileSystem")
     public FileSystem hadoopFileSystem() throws Exception {
         org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
+        conf.set("dfs.client.block.write.replace-datanode-on-failure.policy","NEVER");
+        conf.set("dfs.client.block.write.replace-datanode-on-failure.enable","true");
        // conf.addResource(new Path(ClassLoader.getSystemResource("hdfs/core-site.xml").toURI()));
        // conf.addResource(new Path(ClassLoader.getSystemResource("hdfs/hdfs-site.xml").toURI()));
         // System.setProperty("HADOOP_USER_NAME","hadoop");
