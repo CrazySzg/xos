@@ -88,7 +88,7 @@ public class TestHbase {
      //   hbaseUtil.putRow("hbaseutil-test", "util-5", "x", "media", "2");
         Scan scan = new Scan();
         //单列值过滤器在发现该行记录并没有你想要比较的列的时候,会把
-        //整行数据放入结果集
+        //整行数据放入结果集,所以循环的时候需要先判断是否存在该行，或者构造的时候使用setFilterIfMissing
         SingleColumnValueFilter filter = new SingleColumnValueFilter("x".getBytes(), "media".getBytes(), CompareFilter.CompareOp.EQUAL, "1".getBytes());
         scan.setFilter(filter);
         ResultScanner scanner = hbaseUtil.getScanner("hbaseutil-test", scan);

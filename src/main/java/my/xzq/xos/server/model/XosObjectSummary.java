@@ -1,11 +1,8 @@
 package my.xzq.xos.server.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
-import java.io.Serializable;
 import java.util.Date;
-import java.util.Map;
 
 
 @Data
@@ -36,10 +33,11 @@ public class XosObjectSummary implements Comparable<XosObjectSummary> {
     @Override
     public int compareTo(XosObjectSummary that) {
         if(this.isDir && !that.isDir) {
-            return 1;
-        } else if(!this.isDir && that.isDir) {
             return -1;
+        } else if(!this.isDir && that.isDir) {
+            return 1;
         }
-        return this.name.compareTo(that.name);
+        // 从大到小排序，注意前面的负号
+        return -this.updateTime.compareTo(that.updateTime);
     }
 }

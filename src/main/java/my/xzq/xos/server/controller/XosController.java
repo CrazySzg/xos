@@ -4,8 +4,10 @@ import my.xzq.xos.server.common.XosConstant;
 import my.xzq.xos.server.common.response.XosSuccessResponse;
 import my.xzq.xos.server.dto.request.DelParam;
 import my.xzq.xos.server.dto.request.MD5ListParam;
+import my.xzq.xos.server.dto.request.MoveParam;
 import my.xzq.xos.server.dto.request.UploadParam;
 import my.xzq.xos.server.dto.response.BreadCrumbs;
+import my.xzq.xos.server.dto.response.SearchResult;
 import my.xzq.xos.server.dto.response.UploadResponse;
 import my.xzq.xos.server.dto.response.UploadResult;
 import my.xzq.xos.server.exception.XosException;
@@ -140,6 +142,19 @@ public class XosController {
     }
 
 
+    @PostMapping("/move")
+    @ResponseBody
+    public XosSuccessResponse<Void> move(@RequestBody  MoveParam param) {
+        try {
+            User xosUserInfo = userService.getUserInfo(this.getCurrentUsername());
+            xosService.move(xosUserInfo.getUserUUID(),param.getPaths(),param.getTargetDir());
+            return XosSuccessResponse.buildEmpty();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new XosException(XosConstant.MOVE_FAIL);
+        }
+    }
+
     /**
      * 获取导航路径
      * @param path 形如0-1-2-
@@ -155,6 +170,18 @@ public class XosController {
         } catch (Exception e) {
             e.printStackTrace();
             throw new XosException(XosConstant.BAD_PARAM);
+        }
+    }
+
+    @GetMapping("/classify/{category}")
+    @ResponseBody
+    public XosSuccessResponse<ObjectListResult> classify(@PathVariable("category") String category) {
+        try {
+            User xosUserInfo = userService.getUserInfo(this.getCurrentUsername());
+            return XosSuccessResponse.build(xosService.classify(xosUserInfo.getUserUUID(), category));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new XosException(XosConstant.UNRECOGNIZE_CATEGORY);
         }
     }
 
@@ -175,6 +202,19 @@ public class XosController {
         }
     }
 
+
+    @GetMapping("/search")
+    @ResponseBody
+    public XosSuccessResponse<SearchResult> search(@RequestParam("keyword") String keyword) {
+        try {
+            User xosUserInfo = userService.getUserInfo(this.getCurrentUsername());
+            return XosSuccessResponse.build(xosService.search(xosUserInfo.getUserUUID(), keyword));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new XosException(XosConstant.SEARCH_FAIL);
+        }
+    }
+
     @GetMapping("/preview/{type}/{userId}/{filePath}/{fileName}")
     public void preview(HttpServletResponse response,@PathVariable("type") String type,
                         @PathVariable("filePath") String filePath,@PathVariable("userId") String userId,
@@ -186,6 +226,7 @@ public class XosController {
 
             response.setContentType(xosService.getMimeType(type));
             response.addHeader("Content-Length",xosObject.getMetaData().getSize() + "");
+            response.addHeader("x-frame-options","SAMEORIGIN");
             byte[] bytes = new byte[XosConstant.CHUNK_SIZE];
             ServletOutputStream outputStream = response.getOutputStream();
 

@@ -16,7 +16,7 @@ public final class XosConstant {
 
     public static final String DOWNLOAD_TOKEN_SPLITER = "###";
 
-    public static final Integer CHUNK_SIZE = 4 * 1024 * 1024;
+    public static final Integer CHUNK_SIZE = 4 * 1024;
 
     public static final String BUCKET = "bucket";
 
@@ -51,6 +51,8 @@ public final class XosConstant {
     public final static byte[] DIR_PARENT_QUALIFIER = "parent".getBytes();
     // 下载需要的盐值
     public final static byte[] OBJ_DOWNLOAD_SALT_QUALIFIER = "salt".getBytes();
+    // 当前文件所在真实目录
+    public final static byte[] OBJ_CURRENT_DIR_QUALIFIER = "current_dir".getBytes();
     // 文件名用于搜索
     public final static byte[] OBJ_FILENAME_QUALIFIER = "fileName".getBytes();
     // 文件表content列名
@@ -58,8 +60,8 @@ public final class XosConstant {
     // 文件表length列名
     public final static byte[] OBJ_SIZE_QUALIFIER = "size".getBytes();
     // 文件表property列名
-    public final static byte[] OBJ_PROPERTY_QUALIFIER = "property".getBytes();
-    // 文件表mediatype列名
+    public final static byte[] OBJ_STATUS_QUALIFIER = "status".getBytes();
+    // 文件表category列名
     public final static byte[] OBJ_CATEGORY_QUALIFIER = "category".getBytes();
 
     public static final FilterList OBJ_META_SCAN_FILTER = new FilterList(FilterList.Operator.MUST_PASS_ONE);
@@ -170,4 +172,12 @@ public final class XosConstant {
     public static final Integer DIR_NOT_EXIST = 130;
     // 请求非法
     public static final Integer OPERATION_ILLEGAL = 131;
+    // 上传目录发生冲突
+    public static final Integer DIR_COLLISION = 132;
+    // 检索失败
+    public static final Integer SEARCH_FAIL = 133;
+    // 移动文件失败
+    public static final Integer MOVE_FAIL = 134;
+    // 不能识别的类别
+    public static final Integer UNRECOGNIZE_CATEGORY = 135;
 }

@@ -10,6 +10,8 @@ public interface TaskMapper {
 
     Integer updateTaskChunk(@Param("uploadId") String uploadId);
 
+    Integer finishInitChunkUpload(@Param("dir") String dir,@Param("uploadId") String uploadId);
+
     Integer updateTaskStatus(@Param("uploadId") String uploadId,@Param("status") Integer status);
 
     UploadTask getUploadInfo(@Param("uploadId") String uploadId);

@@ -11,6 +11,10 @@
         UPDATE info_task set expect_chunk = expect_chunk + 1
         where upload_id = #{uploadId}
     </update>
+    <update id="finishInitChunkUpload" parameterType="string">
+        UPDATE info_task set dir = #{dir} ,expect_chunk = expect_chunk + 1
+        where upload_id = #{uploadId}
+    </update>
     <update id="updateTaskStatus">
         UPDATE info_task set status = #{status}
         where upload_id = #{uploadId}

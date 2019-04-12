@@ -60,6 +60,9 @@ public class XosWebSecurityConfig extends WebSecurityConfigurerAdapter {
             .sessionManagement().disable()  //因为前后端分离，所以不需要session
             .cors()
             .and()
+                .headers()
+                .frameOptions().sameOrigin()
+            .and()
             .addFilterAfter(new OptionsRequestFilter(), CorsFilter.class)
             .authorizeRequests()
                 .antMatchers("/image/**").permitAll()

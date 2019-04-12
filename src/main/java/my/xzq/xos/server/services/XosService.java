@@ -4,6 +4,7 @@ package my.xzq.xos.server.services;
 import my.xzq.xos.server.common.response.XosSuccessResponse;
 import my.xzq.xos.server.dto.request.DelParam;
 import my.xzq.xos.server.dto.response.BreadCrumbs;
+import my.xzq.xos.server.dto.response.SearchResult;
 import my.xzq.xos.server.dto.response.UploadResponse;
 import my.xzq.xos.server.dto.response.UploadResult;
 import my.xzq.xos.server.model.ObjectListResult;
@@ -32,18 +33,23 @@ public interface XosService {
 
     public XosObject getObject(String bucket, String filePath) throws Exception;
 
+    public SearchResult search(String bucket, String keyword) throws Exception;
 
     public void deleteObject(String bucket, List<DelParam> paths) throws Exception;
 
-    public void rename(String bucket, String rowKey, String oldName, String newName,boolean isDir) throws Exception;
+    public void rename(String bucket, String rowKey, String oldName, String newName, boolean isDir) throws Exception;
 
     public UploadResponse createUploadTask(String uploadId, String fileName, List<String> md5List) throws Exception;
 
     public List<BreadCrumbs> makeBread(String bucket, String path) throws Exception;
 
-    public String preDownload(String bucket , String filePath,long shareTime) throws Exception;
+    public String preDownload(String bucket, String filePath, long shareTime) throws Exception;
 
-    public boolean validateDownloadToken(String downloadToken,String bucket,String filePath) throws Exception;
+    public boolean validateDownloadToken(String downloadToken, String bucket, String filePath) throws Exception;
 
-    public String getMimeType(String type) throws  Exception;
+    public String getMimeType(String type) throws Exception;
+
+    public void move(String bucket, List<String> paths, String targetDir) throws Exception;
+
+    public ObjectListResult classify(String bucket, String category) throws Exception;
 }

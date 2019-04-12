@@ -4,10 +4,9 @@ public enum Category {
 
     VIDEO("1"),
     PICTURE("2"),
-    FILE("3"),
-    DOCUMENT("4"),
-    AUDIO("5"),
-    DIRECTORY("6");
+    DOCUMENT("3"),
+    AUDIO("4"),
+    DIRECTORY("5");
 
     String type;
     Category(String type) {

@@ -8,6 +8,7 @@ import java.util.Date;
 public class UploadTask {
 
     private Integer id;
+    private String dir;
     private String uploadId;
     private String fileName;
     private Integer totalChunk;

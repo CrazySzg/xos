@@ -5,6 +5,7 @@ import my.xzq.xos.server.common.XosConstant;
 import my.xzq.xos.server.common.response.XosSuccessResponse;
 import my.xzq.xos.server.dto.request.DelParam;
 import my.xzq.xos.server.dto.response.BreadCrumbs;
+import my.xzq.xos.server.dto.response.SearchResult;
 import my.xzq.xos.server.dto.response.UploadResponse;
 import my.xzq.xos.server.dto.response.UploadResult;
 import my.xzq.xos.server.enumeration.Category;
@@ -17,6 +18,9 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
+import org.apache.hadoop.hbase.filter.SubstringComparator;
 import org.apache.hadoop.hbase.io.ByteBufferInputStream;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +34,11 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -63,7 +71,7 @@ public class XosServiceImpl implements XosService {
         put.addColumn(XosConstant.BUCKET_DIR_SEQ_COLUMN_FAMILY_BYTES, XosConstant.BUCKET_DIR_SEQ_COLUMN_QUALIFIER_BYTES, Bytes.toBytes(0L));
         hbaseUtil.putRow(XosConstant.BUCKET_DIR_SEQ_TABLE, put);
         // 目录表中添加根目录
-        Put rootDir = new Put(Bytes.toBytes("0-"));
+        Put rootDir = new Put(Bytes.toBytes(XosConstant.ROOT));
 
         rootDir.addColumn(XosConstant.DIR_META_COLUMN_FAMILY_BYTES, XosConstant.DIR_SEQID_QUALIFIER, Bytes.toBytes("0"));
         // 根目录没有上级目录
@@ -105,13 +113,16 @@ public class XosServiceImpl implements XosService {
      */
     @Override
     public XosSuccessResponse<UploadResult> create(String uploadId, Integer partSeq, String bucket, String dir, String fileName, ByteBuffer content, long size, String category) throws Exception {
+        if(StringUtils.isEmpty(dir)) {
+            dir = XosConstant.ROOT;
+        }
         String chunkMd5 = DigestUtils.md5DigestAsHex(content.array());
         UploadTask uploadTask = taskMapper.getUploadInfo(uploadId);
         List<String> md5List = JsonUtil.fromJsonList(uploadTask.getMd5List(), String.class);
 
         if (!md5List.contains(chunkMd5)) {
             // 文件传输过程中有数据丢失，返回的md5和客户端md5不同，客户端重新上传
-            return XosSuccessResponse.build(new UploadResult(chunkMd5,partSeq));
+            return XosSuccessResponse.build(new UploadResult(chunkMd5, partSeq));
         }
         if (!dirExist(bucket, dir)) {
             throw new XosException(XosConstant.CREATE_FILE_FAIL, "directory " + dir + " doesn't exist ");
@@ -133,6 +144,10 @@ public class XosServiceImpl implements XosService {
                 expectMd5 = md5List.get(expectChunkIndex);
                 // 不相等说明此时完成上传的块还不能拼接上去
             } while (!ObjectUtils.nullSafeEquals(expectMd5, chunkMd5) && sleep());
+            uploadTask = taskMapper.getUploadInfo(uploadId);
+            if (partSeq != 0 && !ObjectUtils.nullSafeEquals(dir, uploadTask.getDir())) {
+                throw new XosException(XosConstant.DIR_COLLISION);
+            }
             if (size <= XosConstant.FILE_STORE_THRESHOLD) {
                 // 已存在 ，追加
                 Append append = new Append(fileKey.getBytes());
@@ -147,9 +162,13 @@ public class XosServiceImpl implements XosService {
             taskMapper.updateTaskChunk(uploadId);
             if (expectChunkIndex + 1 == uploadInfo.getTotalChunk()) {
                 taskMapper.updateTaskStatus(uploadId, XosConstant.UPLOAD_TASK_FINISH);
+
+                Put finishPut = new Put(fileKey.getBytes());
+                finishPut.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_STATUS_QUALIFIER, Bytes.toBytes("1"));
+                hbaseUtil.putRow(XosConstant.getObjTableName(bucket), finishPut);
             }
 
-            return XosSuccessResponse.build(new UploadResult(chunkMd5,expectChunkIndex));
+            return XosSuccessResponse.build(new UploadResult(chunkMd5, expectChunkIndex));
         }
         Put contentPut = new Put(Bytes.toBytes(fileKey));
         // 文件类型
@@ -160,6 +179,10 @@ public class XosServiceImpl implements XosService {
         contentPut.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_SIZE_QUALIFIER, Bytes.toBytes(size));
         // 文件名
         contentPut.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_FILENAME_QUALIFIER, Bytes.toBytes(fileName));
+
+        contentPut.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_STATUS_QUALIFIER, Bytes.toBytes("0"));
+        // 文件所在目录
+        contentPut.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES,XosConstant.OBJ_CURRENT_DIR_QUALIFIER,Bytes.toBytes(dir));
         // 判断文件大小
         if (size <= XosConstant.FILE_STORE_THRESHOLD) {
             // 直接放入HBase
@@ -173,8 +196,8 @@ public class XosServiceImpl implements XosService {
             hdfsUtil.createFile(fileDir, uploadId, inputStream, size, (short) 1);
         }
         hbaseUtil.putRow(XosConstant.getObjTableName(bucket), contentPut);
-        taskMapper.updateTaskChunk(uploadId);
-        return XosSuccessResponse.build(new UploadResult(chunkMd5,partSeq));
+        taskMapper.finishInitChunkUpload(dir, uploadId);
+        return XosSuccessResponse.build(new UploadResult(chunkMd5, partSeq));
     }
 
 
@@ -255,16 +278,24 @@ public class XosServiceImpl implements XosService {
         }
         // 查询文件表
         Scan objScan = new Scan();
-        objScan.withStartRow(Bytes.toBytes(dir));
-        objScan.setRowPrefixFilter(Bytes.toBytes(dir));
-        objScan.addFamily(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES);
+        SingleColumnValueFilter filter = new SingleColumnValueFilter(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_CURRENT_DIR_QUALIFIER,
+                CompareFilter.CompareOp.EQUAL, Bytes.toBytes(dir));
+        objScan.setFilter(filter);
+//        objScan.withStartRow(Bytes.toBytes(dir));
+//        objScan.setRowPrefixFilter(Bytes.toBytes(dir + "_"));
+//        objScan.addFamily(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES);
 
         ResultScanner scanner = hbaseUtil.getScanner(XosConstant.getObjTableName(bucket), objScan);
         List<XosObjectSummary> objectSummaryList = new ArrayList<>();
         Result result = null;
         while ((result = scanner.next()) != null) {
-            XosObjectSummary xosObjectSummary = resultObjectToSummary(result);
-            objectSummaryList.add(xosObjectSummary);
+            String currentDir = Bytes.toString(result.getValue(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_CURRENT_DIR_QUALIFIER));
+            String status = Bytes.toString(result.getValue(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_STATUS_QUALIFIER));
+
+            if(ObjectUtils.nullSafeEquals(dir,currentDir) && ObjectUtils.nullSafeEquals("1",status)) {
+                XosObjectSummary xosObjectSummary = resultObjectToSummary(result);
+                objectSummaryList.add(xosObjectSummary);
+            }
         }
         if (scanner != null) {
             scanner.close();
@@ -330,26 +361,60 @@ public class XosServiceImpl implements XosService {
         return xosObject;
     }
 
+    @Override
+    public void move(String bucket,List<String> paths, String targetDir) throws Exception {
+        if(CollectionUtils.isNotEmpty(paths) && StringUtils.hasText(targetDir)) {
+            List<Put> puts = paths.stream()
+                    .map(path -> {
+                        Put put = new Put(Bytes.toBytes(path));
+                        put.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_CURRENT_DIR_QUALIFIER, Bytes.toBytes(targetDir));
+                        return put;
+                    }).collect(Collectors.toList());
+            hbaseUtil.putRows(XosConstant.getObjTableName(bucket),puts);
+        }
+    }
+
+    @Override
+    public SearchResult search(String bucket, String keyword) throws Exception {
+        SearchResult searchResult = new SearchResult();
+        if (StringUtils.isEmpty(keyword)) {
+            return searchResult;
+        }
+        SingleColumnValueFilter filter = new SingleColumnValueFilter(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES,XosConstant.OBJ_FILENAME_QUALIFIER,
+                CompareFilter.CompareOp.EQUAL, new SubstringComparator(keyword));
+        Scan scan = new Scan();
+        scan.setFilter(filter);
+        ResultScanner scanner = hbaseUtil.getScanner(XosConstant.getObjTableName(bucket), scan);
+        Result result = null;
+        List<XosObjectSummary> summaryList = new ArrayList<>();
+        while((result = scanner.next()) != null) {
+            if(result.containsColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES,XosConstant.OBJ_FILENAME_QUALIFIER)) {
+                XosObjectSummary summary = resultObjectToSummary(result);
+                summaryList.add(summary);
+            }
+        }
+        searchResult.setData(summaryList);
+        return searchResult;
+    }
 
     /**
      * 删除文件
      *
-     * @param bucket     用户的uuid
-     *
+     * @param bucket 用户的uuid
      * @throws Exception 异常
      */
     @Override
     public void deleteObject(String bucket, List<DelParam> paths) throws Exception {
-        if(CollectionUtils.isNotEmpty(paths)) {
-            for(DelParam path : paths) {
+        if (CollectionUtils.isNotEmpty(paths)) {
+            for (DelParam path : paths) {
                 // 判断目录是否为空
                 String dir = path.getPath();
                 if (path.isDir() && !isDirEmpty(bucket, dir)) {
-                    throw new XosException(XosConstant.DIR_NOT_EMPTY,"目录：" + path.getName() + "不为空");
+                    throw new XosException(XosConstant.DIR_NOT_EMPTY, "目录：" + path.getName() + "不为空");
                 }
             }
-            for(DelParam path : paths) {
-                if(path.isDir()) {
+            for (DelParam path : paths) {
+                if (path.isDir()) {
                     String dir = path.getPath();
                     if (ObjectUtils.nullSafeEquals(dir, "0-")) {
                         throw new XosException(XosConstant.ROOT_DIR_CANNOT_DELETE);
@@ -368,7 +433,7 @@ public class XosServiceImpl implements XosService {
                     hbaseUtil.deleteRow(XosConstant.getDirTableName(bucket), dir);
                 } else {
                     String objKey = path.getPath();
-                    String[] dirAndUuid = path.getPath().split("_",2);
+                    String[] dirAndUuid = path.getPath().split("_", 2);
 
                     Get get = new Get(objKey.getBytes());
                     // 查询长度
@@ -395,11 +460,11 @@ public class XosServiceImpl implements XosService {
     }
 
     /**
-     * @param bucket    用户的uuid
-     * @param rowKey 该文件或文件夹所在目录 形如 0-1-2- 0-1-2-_fileUuid
-     * @param oldName   原文件或文件夹名称
-     * @param newName   新的文件或文件夹名称
-     * @throws Exception  异常
+     * @param bucket  用户的uuid
+     * @param rowKey  该文件或文件夹所在目录 形如 0-1-2- 0-1-2-_fileUuid
+     * @param oldName 原文件或文件夹名称
+     * @param newName 新的文件或文件夹名称
+     * @throws Exception 异常
      */
     @Override
     public void rename(String bucket, String rowKey, String oldName, String newName, boolean isDir) throws Exception {
@@ -443,7 +508,7 @@ public class XosServiceImpl implements XosService {
 
     @Override
     public List<BreadCrumbs> makeBread(String bucket, String path) throws Exception {
-        if(!hbaseUtil.existRow(XosConstant.getDirTableName(bucket),path)) {
+        if (!hbaseUtil.existRow(XosConstant.getDirTableName(bucket), path)) {
             throw new XosException(XosConstant.DIR_NOT_EXIST);
         }
         List<BreadCrumbs> breadCrumbs = new ArrayList<>();
@@ -466,10 +531,10 @@ public class XosServiceImpl implements XosService {
         rowKeys.remove(0);
 
         Result[] rows = hbaseUtil.getRows(XosConstant.getDirTableName(bucket), rowKeys);
-        for(Result result : rows) {
+        for (Result result : rows) {
             String fileName = Bytes.toString(result.getValue(XosConstant.DIR_META_COLUMN_FAMILY_BYTES, XosConstant.DIR_NAME_QUALIFIER));
             String rowKey = Bytes.toString(result.getRow());
-            breadCrumbs.add(new BreadCrumbs(rowKey,fileName));
+            breadCrumbs.add(new BreadCrumbs(rowKey, fileName));
         }
 
         return breadCrumbs;
@@ -478,24 +543,25 @@ public class XosServiceImpl implements XosService {
     @Override
     @Transactional
     public UploadResponse createUploadTask(String uploadId, String fileName, List<String> md5List) throws Exception {
-         if(StringUtils.hasText(uploadId)) {
-             // 说明之前有暂停上传过，返回需要的分片
-             UploadTask uploadInfo = taskMapper.getUploadInfo(uploadId);
-             return UploadResponse.builder()
-                     .expectedChunk(uploadInfo.getExpectChunk())
-                     .fileName(uploadInfo.getFileName())
-                     .uploadId(uploadInfo.getUploadId())
-                     .build();
-         } else {
+        if (StringUtils.hasText(uploadId)) {
+            // 说明之前有暂停上传过，返回需要的分片
+            UploadTask uploadInfo = taskMapper.getUploadInfo(uploadId);
+            return UploadResponse.builder()
+                    .expectedChunk(uploadInfo.getExpectChunk())
+                    .dir(uploadInfo.getDir())
+                    .fileName(uploadInfo.getFileName())
+                    .uploadId(uploadInfo.getUploadId())
+                    .build();
+        } else {
             // 首次上传
-             uploadId = UUIDUtil.getUUIDString();
-             taskMapper.createUploadTask(uploadId , fileName, md5List.size(), JsonUtil.toJson(md5List));
-             return UploadResponse.builder()
-                     .expectedChunk(0)
-                     .uploadId(uploadId)
-                     .fileName(fileName)
-                     .build();
-         }
+            uploadId = UUIDUtil.getUUIDString();
+            taskMapper.createUploadTask(uploadId, fileName, md5List.size(), JsonUtil.toJson(md5List));
+            return UploadResponse.builder()
+                    .expectedChunk(0)
+                    .uploadId(uploadId)
+                    .fileName(fileName)
+                    .build();
+        }
     }
 
     private boolean dirExist(String bucket, String dir) {
@@ -525,6 +591,7 @@ public class XosServiceImpl implements XosService {
         if (!dirExist(bucket, parent)) {
             throw new XosException(XosConstant.PARENT_DIR_NOT_EXIST);
         }
+
         String sequenceId = this.makeDirSequenceId(bucket);
         String newDir = parent + sequenceId + XosConstant.STUB;
         if (dirExist(bucket, newDir)) {
@@ -629,23 +696,23 @@ public class XosServiceImpl implements XosService {
     }
 
     @Override
-    public String preDownload(String bucket,String filePath,long shareTime) throws Exception {
-        if(hbaseUtil.existRow(XosConstant.getObjTableName(bucket),filePath)) {
+    public String preDownload(String bucket, String filePath, long shareTime) throws Exception {
+        if (hbaseUtil.existRow(XosConstant.getObjTableName(bucket), filePath)) {
             String salt = JWTUtil.generateSalt();
             Put put = new Put(filePath.getBytes());
-            put.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES,XosConstant.OBJ_DOWNLOAD_SALT_QUALIFIER,salt.getBytes());
-            hbaseUtil.putRow(XosConstant.getObjTableName(bucket),put);
+            put.addColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_DOWNLOAD_SALT_QUALIFIER, salt.getBytes());
+            hbaseUtil.putRow(XosConstant.getObjTableName(bucket), put);
 
             long nowMillis = System.currentTimeMillis();
             long ttlMillis;
             Date ttl = null;
-            if(shareTime != -1L)  {
+            if (shareTime != -1L) {
                 ttlMillis = nowMillis + shareTime;
                 ttl = new Date(ttlMillis);
             }
-            Date now  = new Date(nowMillis);
+            Date now = new Date(nowMillis);
 
-            String token = JWTUtil.generateDownloadToken(bucket, filePath, salt,now,ttl);
+            String token = JWTUtil.generateDownloadToken(bucket, filePath, salt, now, ttl);
             return token;
         }
         throw new XosException(XosConstant.OPERATION_ILLEGAL);
@@ -655,26 +722,26 @@ public class XosServiceImpl implements XosService {
     public String getMimeType(String type) throws Exception {
         String mimeType;
         switch (type) {
-            case "pdf" :
-                mimeType =  "application/pdf";
+            case "pdf":
+                mimeType = "application/pdf";
                 break;
-            case "doc" :
-                mimeType =  "application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "doc":
+                mimeType = "application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document";
                 break;
-            case "ppt" :
-                mimeType =  "application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "ppt":
+                mimeType = "application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation";
                 break;
-            case "xls" :
-                mimeType =  "application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "xls":
+                mimeType = "application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                 break;
-            case "audio" :
-                mimeType =  "audio/mpeg;audio/ogg;audio/basic;audio/aac;audio/wav;audio/x-mpegurl;audio/*";
+            case "audio":
+                mimeType = "audio/mpeg;audio/ogg;audio/basic;audio/aac;audio/wav;audio/x-mpegurl;audio/*";
                 break;
-            case "video" :
-                mimeType =  "video/x-msvideo;video/x-flv;video/mpeg;video/quicktime;video/mp4;video/3gpp;video/*";
+            case "video":
+                mimeType = "video/x-msvideo;video/x-flv;video/mpeg;video/quicktime;video/mp4;video/3gpp;video/*";
                 break;
-            case "image" :
-                mimeType =  "image/bmp;image/gif;image/x-icon;image/jpeg;image/png;image/*";
+            case "image":
+                mimeType = "image/bmp;image/gif;image/x-icon;image/jpeg;image/png;image/*";
                 break;
             default:
                 mimeType = "application/json";
@@ -683,16 +750,16 @@ public class XosServiceImpl implements XosService {
     }
 
     @Override
-    public boolean validateDownloadToken(String downloadToken,String bucket,String filePath) throws Exception {
+    public boolean validateDownloadToken(String downloadToken, String bucket, String filePath) throws Exception {
 
-        if(StringUtils.hasText(bucket) && StringUtils.hasText(filePath)) {
+        if (StringUtils.hasText(bucket) && StringUtils.hasText(filePath)) {
             Result res = hbaseUtil.getRow(XosConstant.getObjTableName(bucket), filePath);
             String salt = "";
-            if(res != null) {
+            if (res != null) {
                 salt = Bytes.toString(res.getValue(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_DOWNLOAD_SALT_QUALIFIER));
             }
             try {
-                return JWTUtil.validateToken(downloadToken,salt);
+                return JWTUtil.validateToken(downloadToken, salt);
             } catch (Exception e) {
                 e.printStackTrace();
                 //TODO 验证失败
@@ -700,5 +767,28 @@ public class XosServiceImpl implements XosService {
             }
         }
         return false;
+    }
+
+
+    @Override
+    public ObjectListResult classify(String bucket, String category) throws Exception {
+        ObjectListResult result = new ObjectListResult();
+        List<XosObjectSummary> summaryList = new ArrayList<>();
+        Scan scan = new Scan();
+        SingleColumnValueFilter filter = new SingleColumnValueFilter(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES, XosConstant.OBJ_CATEGORY_QUALIFIER,
+                CompareFilter.CompareOp.EQUAL, category.getBytes());
+        scan.setFilter(filter);
+        ResultScanner scanner = hbaseUtil.getScanner(XosConstant.getObjTableName(bucket), scan);
+        Result rs ;
+        while((rs = scanner.next()) != null) {
+            if(rs.containsColumn(XosConstant.OBJ_META_COLUMN_FAMILY_BYTES,XosConstant.OBJ_CATEGORY_QUALIFIER)) {
+                XosObjectSummary summary = resultObjectToSummary(rs);
+                summaryList.add(summary);
+            }
+        }
+        Collections.sort(summaryList);
+        result.setData(summaryList);
+        result.setCount(summaryList.size());
+        return result;
     }
 }

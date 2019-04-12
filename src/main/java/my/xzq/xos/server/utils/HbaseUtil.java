@@ -333,6 +333,16 @@ public class HbaseUtil {
         }
     }
 
+    public boolean putRows(String tableName, List<Put> puts) {
+        try (Table table = connection.getTable(TableName.valueOf(tableName))) {
+            table.put(puts);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new XosException(XosConstant.PUT_HBASE_ROW_DATA_FAIL, "put row error");
+        }
+    }
+
     public boolean putRow(String tableName, String rowKey, String columnFamily, String columnQuanlifier, String data) {
         Put put = new Put(rowKey.getBytes());
         put.addColumn(columnFamily.getBytes(), columnQuanlifier.getBytes(), data.getBytes());

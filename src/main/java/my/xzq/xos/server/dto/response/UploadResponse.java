@@ -8,6 +8,7 @@ import lombok.Data;
 public class UploadResponse {
 
     private String uploadId;
+    private String dir;
     private String fileName;
     private Integer expectedChunk;
 }

@@ -1,6 +1,6 @@
 package my.xzq.xos.server;
 
-import my.xzq.xos.server.utils.IdSequenceUtils;
+import my.xzq.xos.server.enumeration.Category;
 import org.junit.Test;
 
 public class TestIdSeq {
@@ -8,6 +8,7 @@ public class TestIdSeq {
 
     @Test
     public void test() {
-        System.out.println(new IdSequenceUtils().nextId());
+
+        System.out.println(Category.valueOf("1"));
     }
 }
